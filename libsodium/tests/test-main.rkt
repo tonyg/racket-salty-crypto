@@ -1,4 +1,6 @@
 #lang racket/base
+;;; SPDX-License-Identifier: ISC
+;;; SPDX-FileCopyrightText: Copyright © 2012-2023 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
 (module+ test
   (require (only-in openssl/sha1 sha1))
