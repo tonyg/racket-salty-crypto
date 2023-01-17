@@ -1,7 +1,7 @@
 __ignored__ := $(shell ./setup.sh)
 
-PACKAGES=libsodium
-COLLECTS=libsodium
+PACKAGES=libsodium libb2
+COLLECTS=libsodium libb2
 
 all: setup
 
