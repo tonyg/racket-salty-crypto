@@ -9,6 +9,8 @@
          BLAKE2B_OUTBYTES
          BLAKE2S_KEYBYTES
          BLAKE2B_KEYBYTES
+         BLAKE2S_BLOCKLEN
+         BLAKE2B_BLOCKLEN
 
          blake2s
          blake2b
@@ -20,6 +22,8 @@
 (define BLAKE2B_OUTBYTES 64)
 (define BLAKE2S_KEYBYTES 32)
 (define BLAKE2B_KEYBYTES 64)
+(define BLAKE2S_BLOCKLEN 64)
+(define BLAKE2B_BLOCKLEN 128)
 
 (define-libb2 _blake2s (_fun _bytes _bytes _bytes _size _size _size -> _int) #:c-id blake2s)
 (define-libb2 _blake2b (_fun _bytes _bytes _bytes _size _size _size -> _int) #:c-id blake2b)
