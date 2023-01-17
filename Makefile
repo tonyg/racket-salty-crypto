@@ -22,3 +22,6 @@ test: setup testonly
 
 testonly:
 	raco test -p $(PACKAGES)
+
+fixcopyright:
+	-fixcopyright.rkt --preset-racket ISC

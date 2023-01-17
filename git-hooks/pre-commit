@@ -1,4 +1,4 @@
 #!/bin/sh
 set -e
 exec 1>&2
-./fixcopyright.rkt -n
+fixcopyright.rkt -n --preset-racket ISC
