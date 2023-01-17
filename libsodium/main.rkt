@@ -13,6 +13,7 @@
 (provide (all-from-out "auth.rkt"))
 (provide (all-from-out "secretbox.rkt"))
 (provide (all-from-out "sign.rkt"))
+(provide (all-from-out "aead.rkt"))
 
 (require "random.rkt")
 (require "hash.rkt")
@@ -22,6 +23,7 @@
 (require "auth.rkt")
 (require "secretbox.rkt")
 (require "sign.rkt")
+(require "aead.rkt")
 
 ;;---------------------------------------------------------------------------
 
