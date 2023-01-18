@@ -18,10 +18,7 @@
                                   2 ;; BLAKE2s
                                   ))
      (define-values (in out) (tcp-connect hostname port))
-     (define H (make-HandshakeState pattern
-                                    #:role 'initiator
-                                    #:prologue echo-protocol
-                                    #:static-keypair (GENERATE_KEYPAIR)))
+     (define H (make-HandshakeState pattern #:role 'initiator #:prologue echo-protocol))
      (write-bytes echo-protocol out)
      (define (write-packet bs)
        (log-info "Sending ~v" bs)
@@ -35,19 +32,19 @@
        packet)
      (define-values (send-cs receive-cs)
        (let loop ()
-         (define-values (packet css) (WriteMessage H #""))
+         (define-values (packet css) (H 'write-message #""))
          (write-packet packet)
          (if css
              (values (car css) (cadr css))
              (let ((packet (read-packet)))
-               (define-values (message css) (ReadMessage H packet))
+               (define-values (message css) (H 'read-message packet))
                (when (positive? (bytes-length message))
                  (log-info "Message received during handshake: ~v" message))
                (if css
                    (values (car css) (cadr css))
                    (loop))))))
      (log-info "Handshake complete, enter lines to echo")
-     (log-info "Server's static public-key is ~v" (remote-static-key H))
+     (log-info "Server's static public-key is ~v" (H 'remote-static-key))
      (let loop ()
        (match (read-line)
          [(? eof-object?) (void)]

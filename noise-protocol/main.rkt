@@ -2,18 +2,10 @@
 ;;; SPDX-License-Identifier: ISC
 ;;; SPDX-FileCopyrightText: Copyright © 2023 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
-(provide GENERATE_KEYPAIR
-
-         make-HandshakeState
-         WriteMessage
-         ReadMessage
-         remote-static-key
-         handshake-hash
-
+(provide make-HandshakeState
          (struct-out handshake-pattern)
          lookup-handshake-pattern
-         handshake-pattern-one-way?
-         )
+         handshake-pattern-one-way?)
 
 (require libsodium)
 (require libb2)
@@ -36,8 +28,7 @@
   (crypto-aead-chacha20poly1305-ietf-decrypt ciphertext ad (SERIALIZE-NONCE n) k))
 (define (SERIALIZE-NONCE n) (bytes-append (make-bytes 4) (integer->integer-bytes n 8 #f #f)))
 
-(define (REKEY k)
-  (subbytes (ENCRYPT k (- (expt 2 64) 1) #"" (make-bytes 32)) 0 32))
+(define (REKEY k) (ENCRYPT k (- (expt 2 64) 1) #"" (make-bytes 32)))
 
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
@@ -46,7 +37,10 @@
 
 ;;---------------------------------------------------------------------------
 
-(define (CipherState [k #f] [n 0])
+(define (CipherState k)
+  (define (set-k! nk) (set! k (subbytes nk 0 32)))
+  (when k (set-k! k))
+  (define n 0)
   (define (++)
     (when (= n #xffffffffffffffff) (error 'CipherState "No more nonces available"))
     (begin0 n (set! n (+ n 1))))
@@ -55,145 +49,104 @@
     [(list 'decrypt ad ciphertext) (if k (DECRYPT k (++) ad ciphertext) ciphertext)]
     [(list 'key) k]
     [(list 'nonce) n]
-    [(list 'rekey) (set! k (REKEY k))]))
-
-(struct SymmetricState (cs ck h) #:mutable #:prefab)
-
-(define (make-SymmetricState protocol_name)
-  (define h (bytes-pad-or-reduce protocol_name HASHLEN HASH))
-  (SymmetricState (CipherState #f 0) h h))
-
-(define (MixKey ss input_key_material)
-  (match-define (list new-ck temp_k) (HKDF (SymmetricState-ck ss) input_key_material 2))
-  (set-SymmetricState-ck! ss new-ck)
-  (set-SymmetricState-cs! ss (CipherState (subbytes temp_k 0 32) 0)))
-
-(define (MixHash ss data)
-  (set-SymmetricState-h! ss (HASH (bytes-append (SymmetricState-h ss) data))))
-
-(define (MixKeyAndHash ss input_key_material)
-  (match-define (list new-ck temp_h temp_k) (HKDF (SymmetricState-ck ss) input_key_material 3))
-  (set-SymmetricState-ck! ss new-ck)
-  (MixHash ss temp_h)
-  (set-SymmetricState-cs! ss (CipherState (subbytes temp_k 0 32) 0)))
-
-(define (EncryptAndHash ss plaintext)
-  (define ciphertext ((SymmetricState-cs ss) 'encrypt (SymmetricState-h ss) plaintext))
-  (MixHash ss ciphertext)
-  ciphertext)
-
-(define (DecryptAndHash ss ciphertext)
-  (define plaintext ((SymmetricState-cs ss) 'decrypt (SymmetricState-h ss) ciphertext))
-  (MixHash ss ciphertext)
-  plaintext)
-
-(define (Split ss)
-  (match-define (list temp_k1 temp_k2) (HKDF (SymmetricState-ck ss) #"" 2))
-  (list (CipherState (subbytes temp_k1 0 32) 0)
-        (CipherState (subbytes temp_k2 0 32) 0)))
-
-;;---------------------------------------------------------------------------
+    [(list 'rekey) (set-k! (REKEY k))]))
 
 (struct handshake-pattern (name base-name initiator-pre-message responder-pre-message message-patterns) #:prefab)
-
-(struct HandshakeState (ss s e rs re role message-patterns psks) #:mutable)
 
 (define (make-HandshakeState handshake_pattern
                              #:role role
                              #:prologue [prologue #""]
                              #:static-keypair [s #f]
                              #:remote-static-pk [rs #f]
-                             #:pregenerated-ephemeral-keypair [e0 #f]
+                             #:pregenerated-ephemeral-keypair [e #f]
                              #:remote-pregenerated-ephemeral-pk [re #f]
                              #:preshared-keys [psks #f])
   (define protocol_name
     (string->bytes/utf-8 (format "Noise_~a_25519_ChaChaPoly_BLAKE2s"
                                  (handshake-pattern-name handshake_pattern))))
-  (define ss (make-SymmetricState protocol_name))
-  (define e (or e0 (GENERATE_KEYPAIR)))
-  (MixHash ss prologue)
+
+  (define cs (CipherState #f))
+  (define ck (bytes-pad-or-reduce protocol_name HASHLEN HASH))
+  (define h ck)
+  (define message-patterns (handshake-pattern-message-patterns handshake_pattern))
+
+  (define (MixHash data) (set! h (HASH (bytes-append h data))))
+
+  (define (MixKey input)
+    (match-define (list new-ck k) (HKDF ck input 2))
+    (set! ck new-ck)
+    (set! cs (CipherState k)))
+
+  (define (MixKeyAndHash input)
+    (match-define (list new-ck temp_h k) (HKDF ck input 3))
+    (set! ck new-ck)
+    (MixHash temp_h)
+    (set! cs (CipherState k)))
+
+  (define (EncryptAndHash p) (let ((c (cs 'encrypt h p))) (MixHash c) c))
+  (define (DecryptAndHash c) (let ((p (cs 'decrypt h c))) (MixHash c) p))
+
+  (define (next-message-pattern!)
+    (begin0 (car message-patterns) (set! message-patterns (cdr message-patterns))))
+
+  (define (next-psk!)
+    (begin0 (car psks) (set! psks (cdr psks))))
+
+  (define (maybe-Split)
+    (and (null? message-patterns)
+         (let ((css (map CipherState (HKDF ck #"" 2))))
+           (match role ['initiator css] ['responder (reverse css)]))))
+
+  (when (not e) (set! e (GENERATE_KEYPAIR)))
+  (when (not s) (set! s (GENERATE_KEYPAIR)))
+
+  (MixHash prologue)
   (for [(token (handshake-pattern-initiator-pre-message handshake_pattern))]
-    (MixHash ss (match token
-                  ['e (match role ['initiator (KEYPAIR-PK e)] ['responder re])]
-                  ['s (match role ['initiator (KEYPAIR-PK s)] ['responder rs])])))
+    (MixHash (match token
+               ['e (match role ['initiator (KEYPAIR-PK e)] ['responder re])]
+               ['s (match role ['initiator (KEYPAIR-PK s)] ['responder rs])])))
   (for [(token (handshake-pattern-responder-pre-message handshake_pattern))]
-    (MixHash ss (match token
-                  ['e (match role ['initiator re] ['responder (KEYPAIR-PK e)])]
-                  ['s (match role ['initiator rs] ['responder (KEYPAIR-PK s)])])))
-  (HandshakeState ss s e rs re role (handshake-pattern-message-patterns handshake_pattern) psks))
+    (MixHash (match token
+               ['e (match role ['initiator re] ['responder (KEYPAIR-PK e)])]
+               ['s (match role ['initiator rs] ['responder (KEYPAIR-PK s)])])))
 
-(define (next-message-pattern! hs)
-  (match-define (cons mp more) (HandshakeState-message-patterns hs))
-  (set-HandshakeState-message-patterns! hs more)
-  mp)
+  (match-lambda*
 
-(define (next-psk! hs)
-  (match-define (cons psk more) (HandshakeState-psks hs))
-  (set-HandshakeState-psks! hs more)
-  psk)
+    [(list 'write-message payload)
+     (define buffer
+       (call-with-output-bytes
+        (lambda (port)
+          (for [(token (next-message-pattern!))]
+            (match token
+              ['e (write-bytes (KEYPAIR-PK e) port)
+                  (MixHash (KEYPAIR-PK e))
+                  (when psks (MixKey (KEYPAIR-PK e)))]
+              ['s (write-bytes (EncryptAndHash (KEYPAIR-PK s)) port)]
+              ['ee (MixKey (DH e re))]
+              ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
+              ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
+              ['ss (MixKey (DH s rs))]
+              ['psk (MixKeyAndHash (next-psk!))]))
+          (write-bytes (EncryptAndHash payload) port))))
+     (values buffer (maybe-Split))]
 
-(define (maybe-Split hs)
-  (if (null? (HandshakeState-message-patterns hs))
-      (let ((css (Split (HandshakeState-ss hs))))
-        (match (HandshakeState-role hs)
-          ['initiator css]
-          ['responder (reverse css)]))
-      #f))
+    [(list 'read-message message)
+     (define in (open-input-bytes message))
+     (for [(token (next-message-pattern!))]
+       (match token
+         ['e (set! re (read-bytes DHLEN in))
+             (MixHash re)
+             (when psks (MixKey re))]
+         ['s (set! rs (DecryptAndHash (read-bytes (+ DHLEN (if (cs 'key) 16 0)) in)))]
+         ['ee (MixKey (DH e re))]
+         ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
+         ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
+         ['ss (MixKey (DH s rs))]
+         ['psk (MixKeyAndHash (next-psk!))]))
+     (values (DecryptAndHash (port->bytes in)) (maybe-Split))]
 
-(define (WriteMessage hs payload)
-  (define buffer
-    (call-with-output-bytes
-     (lambda (port)
-       (for [(token (next-message-pattern! hs))]
-         (match token
-           ['e (write-bytes (KEYPAIR-PK (HandshakeState-e hs)) port)
-               (MixHash (HandshakeState-ss hs) (KEYPAIR-PK (HandshakeState-e hs)))
-               (when (HandshakeState-psks hs)
-                 (MixKey (HandshakeState-ss hs) (KEYPAIR-PK (HandshakeState-e hs))))]
-           ['s (write-bytes (EncryptAndHash (HandshakeState-ss hs)
-                                            (KEYPAIR-PK (HandshakeState-s hs)))
-                            port)]
-           ['ee (MixKey (HandshakeState-ss hs) (DH (HandshakeState-e hs) (HandshakeState-re hs)))]
-           ['es (MixKey (HandshakeState-ss hs)
-                        (match (HandshakeState-role hs)
-                          ['initiator (DH (HandshakeState-e hs) (HandshakeState-rs hs))]
-                          ['responder (DH (HandshakeState-s hs) (HandshakeState-re hs))]))]
-           ['se (MixKey (HandshakeState-ss hs)
-                        (match (HandshakeState-role hs)
-                          ['initiator (DH (HandshakeState-s hs) (HandshakeState-re hs))]
-                          ['responder (DH (HandshakeState-e hs) (HandshakeState-rs hs))]))]
-           ['ss (MixKey (HandshakeState-ss hs) (DH (HandshakeState-s hs) (HandshakeState-rs hs)))]
-           ['psk (MixKeyAndHash (HandshakeState-ss hs) (next-psk! hs))]))
-       (write-bytes (EncryptAndHash (HandshakeState-ss hs) payload) port))))
-  (values buffer (maybe-Split hs)))
-
-(define (ReadMessage hs message)
-  (define in (open-input-bytes message))
-  (for [(token (next-message-pattern! hs))]
-    (match token
-      ['e (set-HandshakeState-re! hs (read-bytes DHLEN in))
-          (MixHash (HandshakeState-ss hs) (HandshakeState-re hs))
-          (when (HandshakeState-psks hs)
-            (MixKey (HandshakeState-ss hs) (HandshakeState-re hs)))]
-      ['s (let ((temp (if ((SymmetricState-cs (HandshakeState-ss hs)) 'key)
-                          (read-bytes (+ DHLEN 16) in)
-                          (read-bytes DHLEN in))))
-            (set-HandshakeState-rs! hs (DecryptAndHash (HandshakeState-ss hs) temp)))]
-      ['ee (MixKey (HandshakeState-ss hs) (DH (HandshakeState-e hs) (HandshakeState-re hs)))]
-      ['es (MixKey (HandshakeState-ss hs)
-                   (match (HandshakeState-role hs)
-                     ['initiator (DH (HandshakeState-e hs) (HandshakeState-rs hs))]
-                     ['responder (DH (HandshakeState-s hs) (HandshakeState-re hs))]))]
-      ['se (MixKey (HandshakeState-ss hs)
-                   (match (HandshakeState-role hs)
-                     ['initiator (DH (HandshakeState-s hs) (HandshakeState-re hs))]
-                     ['responder (DH (HandshakeState-e hs) (HandshakeState-rs hs))]))]
-      ['ss (MixKey (HandshakeState-ss hs) (DH (HandshakeState-s hs) (HandshakeState-rs hs)))]
-      ['psk (MixKeyAndHash (HandshakeState-ss hs) (next-psk! hs))]))
-  (values (DecryptAndHash (HandshakeState-ss hs) (port->bytes in)) (maybe-Split hs)))
-
-(define (remote-static-key hs) (HandshakeState-rs hs))
-(define (handshake-hash hs) (SymmetricState-h (HandshakeState-ss hs)))
+    [(list 'remote-static-key) rs]
+    [(list 'handshake-hash) h]))
 
 ;;---------------------------------------------------------------------------
 
