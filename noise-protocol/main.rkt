@@ -85,23 +85,21 @@
   (define (next-message-pattern!)
     (begin0 (car message-patterns) (set! message-patterns (cdr message-patterns))))
 
+  (define-syntax-rule (role-case i r) (match role ['initiator i] ['responder r]))
+
   (define (maybe-Split)
     (and (null? message-patterns)
          (let ((css (map CipherState (HKDF ck #"" 2))))
-           (match role ['initiator css] ['responder (reverse css)]))))
+           (role-case css (reverse css)))))
 
   (when (not e) (set! e (GENERATE_KEYPAIR)))
   (when (not s) (set! s (GENERATE_KEYPAIR)))
 
   (MixHash prologue)
   (for [(token (handshake-pattern-initiator-pre-message handshake_pattern))]
-    (MixHash (match token
-               ['e (match role ['initiator (KEYPAIR-PK e)] ['responder re])]
-               ['s (match role ['initiator (KEYPAIR-PK s)] ['responder rs])])))
+    (MixHash (match token ['e (role-case (KEYPAIR-PK e) re)] ['s (role-case (KEYPAIR-PK s) rs)])))
   (for [(token (handshake-pattern-responder-pre-message handshake_pattern))]
-    (MixHash (match token
-               ['e (match role ['initiator re] ['responder (KEYPAIR-PK e)])]
-               ['s (match role ['initiator rs] ['responder (KEYPAIR-PK s)])])))
+    (MixHash (match token ['e (role-case re (KEYPAIR-PK e))] ['s (role-case rs (KEYPAIR-PK s))])))
 
   (match-lambda*
 
@@ -116,8 +114,8 @@
                   (when psks (MixKey (KEYPAIR-PK e)))]
               ['s (write-bytes (EncryptAndHash (KEYPAIR-PK s)) port)]
               ['ee (MixKey (DH e re))]
-              ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
-              ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
+              ['es (MixKey (role-case (DH e rs) (DH s re)))]
+              ['se (MixKey (role-case (DH s re) (DH e rs)))]
               ['ss (MixKey (DH s rs))]
               ['psk (MixKeyAndHash-next-psk)]))
           (write-bytes (EncryptAndHash payload) port))))
@@ -132,8 +130,8 @@
              (when psks (MixKey re))]
          ['s (set! rs (DecryptAndHash (read-bytes (+ DHLEN (if (cs 'key) 16 0)) in)))]
          ['ee (MixKey (DH e re))]
-         ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
-         ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
+         ['es (MixKey (role-case (DH e rs) (DH s re)))]
+         ['se (MixKey (role-case (DH s re) (DH e rs)))]
          ['ss (MixKey (DH s rs))]
          ['psk (MixKeyAndHash-next-psk)]))
      (values (DecryptAndHash (port->bytes in)) (maybe-Split))]
