@@ -2,7 +2,7 @@
 ;;; SPDX-License-Identifier: ISC
 ;;; SPDX-FileCopyrightText: Copyright © 2023 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
-(provide make-HandshakeState
+(provide make-noise-protocol
          (all-from-out "patterns.rkt"))
 
 (require libsodium)
@@ -48,7 +48,7 @@
     [(list 'nonce) n]
     [(list 'rekey) (set-k! (REKEY k))]))
 
-(define (make-HandshakeState handshake_pattern
+(define (make-noise-protocol handshake_pattern
                              #:role role
                              #:prologue [prologue #""]
                              #:static-keypair [s #f]
