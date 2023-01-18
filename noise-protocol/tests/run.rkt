@@ -5,7 +5,7 @@
 (module+ test
   (require file/sha1)
   (require json)
-  (require noise)
+  (require noise-protocol)
   (require racket/exn)
   (require racket/runtime-path)
   (require rackunit)

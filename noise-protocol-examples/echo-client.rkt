@@ -4,7 +4,7 @@
 
 (module+ main
   (require racket/tcp)
-  (require noise)
+  (require noise-protocol)
 
   (match (current-command-line-arguments)
     [(vector (and pattern-name (app string->pattern-number (? number? pattern-number)))

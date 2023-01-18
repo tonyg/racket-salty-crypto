@@ -2,6 +2,5 @@
 ;;; SPDX-License-Identifier: ISC
 ;;; SPDX-FileCopyrightText: Copyright © 2023 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
-(define collection "noise")
-(define deps '("base" "libsodium" "libb2"))
-(define build-deps '("rackunit-lib"))
+(define collection "noise-protocol-examples")
+(define deps '("base" "noise-protocol"))
