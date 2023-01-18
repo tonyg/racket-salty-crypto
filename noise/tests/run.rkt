@@ -83,14 +83,14 @@
                                (bytes->hex-string expected-ciphertext))
                  (define-values (remote-payload receiver-css) (ReadMessage receiver expected-ciphertext))
                  (check-equal? remote-payload payload)
-                 (check-equal? sender-css receiver-css)
+                 (check-equal? sender-css (! reverse receiver-css))
                  (cond
                    [(not sender-css)
                     (loop more-messages receiver sender (not sender-is-initiator?))]
                    [else
                     (let loop ((messages more-messages)
-                               (sender-css (if sender-is-initiator? (reverse sender-css) sender-css))
-                               (receiver-css (if sender-is-initiator? receiver-css (reverse receiver-css))))
+                               (sender-css receiver-css)
+                               (receiver-css sender-css))
                       (match messages
                         ['() 'done]
                         [(cons m more-messages)

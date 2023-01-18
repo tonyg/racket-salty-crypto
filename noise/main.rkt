@@ -206,7 +206,10 @@
 
 (define (maybe-Split hs)
   (if (null? (HandshakeState-message-patterns hs))
-      (Split (HandshakeState-ss hs))
+      (let ((css (Split (HandshakeState-ss hs))))
+        (match (HandshakeState-role hs)
+          ['initiator css]
+          ['responder (reverse css)]))
       #f))
 
 (define (WriteMessage hs payload)
