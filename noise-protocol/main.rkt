@@ -29,7 +29,7 @@
 (require "hmac.rkt")
 
 (define (GENERATE_KEYPAIR) (make-crypto-box-keypair))
-(define DHLEN crypto_box_BEFORENMBYTES)
+(define DHLEN crypto_scalarmult_BYTES)
 (define (DH kp pk) (crypto-scalarmult (crypto-box-keypair-sk kp) pk))
 
 (define (ENCRYPT k n ad plaintext) (crypto-aead-chacha20poly1305-ietf-encrypt plaintext ad n k))
