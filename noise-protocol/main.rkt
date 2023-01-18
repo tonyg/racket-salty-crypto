@@ -41,6 +41,10 @@
                      (make-bytes crypto_aead_chacha20poly1305_ietf_KEYBYTES))
             0
             crypto_aead_chacha20poly1305_ietf_KEYBYTES))
+(define (SERIALIZE-NONCE n)
+  (bytes-append (make-bytes 4) ;; ChaChaPoly-IETF has a 96-bit nonce
+                ;; v Little-endian for ChaChaPoly, but big-endian for AESGCM!
+                (integer->integer-bytes n 8 #f #f)))
 
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
@@ -72,9 +76,7 @@
   (set-CipherState-n! cs (+ n 1))
   (when (= n #xffffffffffffffff)
     (error 'next-nonce "No more nonces available"))
-  (bytes-append (make-bytes 4) ;; ChaChaPoly-IETF has a 96-bit nonce
-                ;; v Little-endian for ChaChaPoly, but big-endian for AESGCM!
-                (integer->integer-bytes n 8 #f #f)))
+  (SERIALIZE-NONCE n))
 
 (define (HasKey cs)
   (not (eq? #f (CipherState-k cs))))
