@@ -36,11 +36,10 @@
   (crypto-aead-chacha20poly1305-ietf-encrypt plaintext ad (SERIALIZE-NONCE n) k))
 (define (DECRYPT k n ad ciphertext)
   (crypto-aead-chacha20poly1305-ietf-decrypt ciphertext ad (SERIALIZE-NONCE n) k))
-(define (REKEY k)
-  (define n (make-bytes crypto_aead_chacha20poly1305_ietf_NPUBBYTES 255))
-  (define block (ENCRYPT k n #"" (make-bytes crypto_aead_chacha20poly1305_ietf_KEYBYTES)))
-  (subbytes block 0 crypto_aead_chacha20poly1305_ietf_KEYBYTES))
 (define (SERIALIZE-NONCE n) (bytes-append (make-bytes 4) (integer->integer-bytes n 8 #f #f)))
+
+(define (REKEY k)
+  (subbytes (ENCRYPT k (- (expt 2 64) 1) #"" (make-bytes 32)) 0 32))
 
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
