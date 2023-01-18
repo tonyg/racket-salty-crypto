@@ -2,12 +2,7 @@
 ;;; SPDX-License-Identifier: ISC
 ;;; SPDX-FileCopyrightText: Copyright © 2023 Tony Garnock-Jones <tonyg@leastfixedpoint.com>
 
-(provide (struct-out CipherState)
-         EncryptWithAd
-         DecryptWithAd
-         Rekey
-
-         GENERATE_KEYPAIR
+(provide GENERATE_KEYPAIR
 
          make-HandshakeState
          WriteMessage
@@ -51,32 +46,16 @@
 
 ;;---------------------------------------------------------------------------
 
-(struct CipherState (k n) #:mutable #:prefab)
-
-(define (InitializeKey cs k)
-  (set-CipherState-k! cs k)
-  (set-CipherState-n! cs 0))
-
-(define (next-n! cs)
-  (define n (CipherState-n cs))
-  (when (= n #xffffffffffffffff) (error 'next-nonce "No more nonces available"))
-  (set-CipherState-n! cs (+ n 1))
-  n)
-
-(define (EncryptWithAd cs ad plaintext)
-  (if (CipherState-k cs)
-      (ENCRYPT (CipherState-k cs) (next-n! cs) ad plaintext)
-      plaintext))
-
-(define (DecryptWithAd cs ad ciphertext)
-  (if (CipherState-k cs)
-      (DECRYPT (CipherState-k cs) (next-n! cs) ad ciphertext)
-      ciphertext))
-
-(define (Rekey cs)
-  (set-CipherState-k! cs (REKEY (CipherState-k cs))))
-
-;;---------------------------------------------------------------------------
+(define (CipherState [k #f] [n 0])
+  (define (++)
+    (when (= n #xffffffffffffffff) (error 'CipherState "No more nonces available"))
+    (begin0 n (set! n (+ n 1))))
+  (match-lambda*
+    [(list 'encrypt ad plaintext) (if k (ENCRYPT k (++) ad plaintext) plaintext)]
+    [(list 'decrypt ad ciphertext) (if k (DECRYPT k (++) ad ciphertext) ciphertext)]
+    [(list 'key) k]
+    [(list 'nonce) n]
+    [(list 'rekey) (set! k (REKEY k))]))
 
 (struct SymmetricState (cs ck h) #:mutable #:prefab)
 
@@ -87,7 +66,7 @@
 (define (MixKey ss input_key_material)
   (match-define (list new-ck temp_k) (HKDF (SymmetricState-ck ss) input_key_material 2))
   (set-SymmetricState-ck! ss new-ck)
-  (InitializeKey (SymmetricState-cs ss) (subbytes temp_k 0 32)))
+  (set-SymmetricState-cs! ss (CipherState (subbytes temp_k 0 32) 0)))
 
 (define (MixHash ss data)
   (set-SymmetricState-h! ss (HASH (bytes-append (SymmetricState-h ss) data))))
@@ -96,15 +75,15 @@
   (match-define (list new-ck temp_h temp_k) (HKDF (SymmetricState-ck ss) input_key_material 3))
   (set-SymmetricState-ck! ss new-ck)
   (MixHash ss temp_h)
-  (InitializeKey (SymmetricState-cs ss) (subbytes temp_k 0 32)))
+  (set-SymmetricState-cs! ss (CipherState (subbytes temp_k 0 32) 0)))
 
 (define (EncryptAndHash ss plaintext)
-  (define ciphertext (EncryptWithAd (SymmetricState-cs ss) (SymmetricState-h ss) plaintext))
+  (define ciphertext ((SymmetricState-cs ss) 'encrypt (SymmetricState-h ss) plaintext))
   (MixHash ss ciphertext)
   ciphertext)
 
 (define (DecryptAndHash ss ciphertext)
-  (define plaintext (DecryptWithAd (SymmetricState-cs ss) (SymmetricState-h ss) ciphertext))
+  (define plaintext ((SymmetricState-cs ss) 'decrypt (SymmetricState-h ss) ciphertext))
   (MixHash ss ciphertext)
   plaintext)
 
@@ -196,7 +175,7 @@
           (MixHash (HandshakeState-ss hs) (HandshakeState-re hs))
           (when (HandshakeState-psks hs)
             (MixKey (HandshakeState-ss hs) (HandshakeState-re hs)))]
-      ['s (let ((temp (if (CipherState-k (SymmetricState-cs (HandshakeState-ss hs)))
+      ['s (let ((temp (if ((SymmetricState-cs (HandshakeState-ss hs)) 'key)
                           (read-bytes (+ DHLEN 16) in)
                           (read-bytes DHLEN in))))
             (set-HandshakeState-rs! hs (DecryptAndHash (HandshakeState-ss hs) temp)))]

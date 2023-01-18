@@ -52,8 +52,8 @@
        (match (read-line)
          [(? eof-object?) (void)]
          [line
-          (write-packet (EncryptWithAd send-cs #"" (string->bytes/utf-8 line)))
-          (println (DecryptWithAd receive-cs #"" (read-packet)))
+          (write-packet (send-cs 'encrypt #"" (string->bytes/utf-8 line)))
+          (println (receive-cs 'decrypt #"" (read-packet)))
           (loop)]))
      (close-input-port in)
      (close-output-port out)

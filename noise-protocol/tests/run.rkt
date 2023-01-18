@@ -83,7 +83,10 @@
                                (bytes->hex-string expected-ciphertext))
                  (define-values (remote-payload receiver-css) (ReadMessage receiver expected-ciphertext))
                  (check-equal? remote-payload payload)
-                 (check-equal? sender-css (! reverse receiver-css))
+                 (if (eq? sender-css #f)
+                     (check-false receiver-css)
+                     (let ((expose (lambda (cs) (list (cs 'key) (cs 'nonce)))))
+                       (check-equal? (map expose sender-css) (map expose (reverse receiver-css)))))
                  (cond
                    [(not sender-css)
                     (loop more-messages receiver sender)]
@@ -97,9 +100,9 @@
                          (define payload (get m 'payload))
                          (define expected-ciphertext (get m 'ciphertext))
                          (printf " = ~v\n" payload)
-                         (define actual-ciphertext (EncryptWithAd (car sender-css) #"" payload))
+                         (define actual-ciphertext ((car sender-css) 'encrypt #"" payload))
                          (check-equal? actual-ciphertext expected-ciphertext)
-                         (define remote-payload (DecryptWithAd (cadr receiver-css) #"" expected-ciphertext))
+                         (define remote-payload ((cadr receiver-css) 'decrypt #"" expected-ciphertext))
                          (check-equal? remote-payload payload)
                          (if oneway?
                              (loop more-messages sender-css receiver-css)
