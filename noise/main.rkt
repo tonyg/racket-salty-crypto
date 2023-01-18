@@ -276,12 +276,18 @@
      (define modifiers (string-split (or modifiers0 "") "+"))
      (define base
        (match main
-         ["NN" (handshake-pattern "NN" '() '() '((e) (e ee)))]
-         ["NK" (handshake-pattern "NK" '() '(s) '((e es) (e ee)))]
-         ["IK" (handshake-pattern "IK" '() '(s) '((e es s ss) (e ee se)))]
-         ["XK" (handshake-pattern "XK" '() '(s) '((e es) (e ee) (s se)))]
-         ["XX" (handshake-pattern "XX" '() '() '((e) (e ee s es) (s se)))]
-         ["IX" (handshake-pattern "IX" '() '() '((e s) (e ee se s es)))]
+         ["NN" (handshake-pattern "--" '() '() '((e) (e ee)))]
+         ["NK" (handshake-pattern "--" '() '(s) '((e es) (e ee)))]
+         ["NX" (handshake-pattern "--" '() '() '((e) (e ee s es)))]
+         ["KN" (handshake-pattern "--" '(s) '() '((e) (e ee se)))]
+         ["KK" (handshake-pattern "--" '(s) '(s) '((e es ss) (e ee se)))]
+         ["KX" (handshake-pattern "--" '(s) '() '((e) (e ee se s es)))]
+         ["XN" (handshake-pattern "--" '() '() '((e) (e ee) (s se)))]
+         ["XK" (handshake-pattern "--" '() '(s) '((e es) (e ee) (s se)))]
+         ["XX" (handshake-pattern "--" '() '() '((e) (e ee s es) (s se)))]
+         ["IN" (handshake-pattern "--" '() '() '((e s) (e ee se)))]
+         ["IK" (handshake-pattern "--" '() '(s) '((e es s ss) (e ee se)))]
+         ["IX" (handshake-pattern "--" '() '() '((e s) (e ee se s es)))]
          [_ #f]))
      (define modified (for/fold [(p base)] [(mod modifiers)] (and p (apply-modifier p mod))))
      (and modified (struct-copy handshake-pattern modified [name pattern-name-str]))]
