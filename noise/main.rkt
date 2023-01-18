@@ -7,6 +7,9 @@
          DecryptWithAd
          Rekey
 
+         GENERATE_KEYPAIR
+
+         HandshakeState-rs ;; TODO: expose more thoughtfully. Also expose the final hash state
          make-HandshakeState
          WriteMessage
          ReadMessage
@@ -174,13 +177,14 @@
                              #:prologue [prologue #""]
                              #:static-keypair [s #f]
                              #:remote-static-pk [rs #f]
-                             #:pregenerated-ephemeral-keypair [e #f]
+                             #:pregenerated-ephemeral-keypair [e0 #f]
                              #:remote-pregenerated-ephemeral-pk [re #f]
                              #:preshared-keys [psks #f])
   (define protocol_name
     (string->bytes/utf-8 (format "Noise_~a_25519_ChaChaPoly_BLAKE2s"
                                  (handshake-pattern-name handshake_pattern))))
   (define ss (make-SymmetricState protocol_name))
+  (define e (or e0 (GENERATE_KEYPAIR)))
   (MixHash ss prologue)
   (for [(token (handshake-pattern-initiator-pre-message handshake_pattern))]
     (MixHash ss
@@ -218,10 +222,7 @@
      (lambda (port)
        (for [(token (next-message-pattern! hs))]
          (match token
-           ['e (if (HandshakeState-e hs)
-                   (void) ;; pregenerated ephemeral keypair (for testing), no action required
-                   (set-HandshakeState-e! hs (GENERATE_KEYPAIR)))
-               (write-bytes (crypto-box-keypair-pk (HandshakeState-e hs)) port)
+           ['e (write-bytes (crypto-box-keypair-pk (HandshakeState-e hs)) port)
                (MixHash (HandshakeState-ss hs) (crypto-box-keypair-pk (HandshakeState-e hs)))
                (when (HandshakeState-psks hs)
                  (MixKey (HandshakeState-ss hs) (crypto-box-keypair-pk (HandshakeState-e hs))))]
