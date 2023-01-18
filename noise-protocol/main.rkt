@@ -70,8 +70,8 @@
 
 (define (next-n! cs)
   (define n (CipherState-n cs))
-  (set-CipherState-n! cs (+ n 1))
   (when (= n #xffffffffffffffff) (error 'next-nonce "No more nonces available"))
+  (set-CipherState-n! cs (+ n 1))
   n)
 
 (define (HasKey cs)
