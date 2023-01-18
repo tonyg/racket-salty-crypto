@@ -31,6 +31,7 @@
 (define (GENERATE_KEYPAIR) (make-crypto-box-keypair))
 (define DHLEN crypto_scalarmult_BYTES)
 (define (DH kp pk) (crypto-scalarmult (crypto-box-keypair-sk kp) pk))
+(define (KEYPAIR-PK kp) (crypto-box-keypair-pk kp))
 
 (define (ENCRYPT k n ad plaintext)
   (crypto-aead-chacha20poly1305-ietf-encrypt plaintext ad (SERIALIZE-NONCE n) k))
@@ -151,15 +152,13 @@
   (define e (or e0 (GENERATE_KEYPAIR)))
   (MixHash ss prologue)
   (for [(token (handshake-pattern-initiator-pre-message handshake_pattern))]
-    (MixHash ss
-             (match token
-               ['e (match role ['initiator (crypto-box-keypair-pk e)] ['responder re])]
-               ['s (match role ['initiator (crypto-box-keypair-pk s)] ['responder rs])])))
+    (MixHash ss (match token
+                  ['e (match role ['initiator (KEYPAIR-PK e)] ['responder re])]
+                  ['s (match role ['initiator (KEYPAIR-PK s)] ['responder rs])])))
   (for [(token (handshake-pattern-responder-pre-message handshake_pattern))]
-    (MixHash ss
-             (match token
-               ['e (match role ['initiator re] ['responder (crypto-box-keypair-pk e)])]
-               ['s (match role ['initiator rs] ['responder (crypto-box-keypair-pk s)])])))
+    (MixHash ss (match token
+                  ['e (match role ['initiator re] ['responder (KEYPAIR-PK e)])]
+                  ['s (match role ['initiator rs] ['responder (KEYPAIR-PK s)])])))
   (HandshakeState ss s e rs re role (handshake-pattern-message-patterns handshake_pattern) psks))
 
 (define (next-message-pattern! hs)
@@ -186,12 +185,12 @@
      (lambda (port)
        (for [(token (next-message-pattern! hs))]
          (match token
-           ['e (write-bytes (crypto-box-keypair-pk (HandshakeState-e hs)) port)
-               (MixHash (HandshakeState-ss hs) (crypto-box-keypair-pk (HandshakeState-e hs)))
+           ['e (write-bytes (KEYPAIR-PK (HandshakeState-e hs)) port)
+               (MixHash (HandshakeState-ss hs) (KEYPAIR-PK (HandshakeState-e hs)))
                (when (HandshakeState-psks hs)
-                 (MixKey (HandshakeState-ss hs) (crypto-box-keypair-pk (HandshakeState-e hs))))]
+                 (MixKey (HandshakeState-ss hs) (KEYPAIR-PK (HandshakeState-e hs))))]
            ['s (write-bytes (EncryptAndHash (HandshakeState-ss hs)
-                                            (crypto-box-keypair-pk (HandshakeState-s hs)))
+                                            (KEYPAIR-PK (HandshakeState-s hs)))
                             port)]
            ['ee (MixKey (HandshakeState-ss hs) (DH (HandshakeState-e hs) (HandshakeState-re hs)))]
            ['es (MixKey (HandshakeState-ss hs)
