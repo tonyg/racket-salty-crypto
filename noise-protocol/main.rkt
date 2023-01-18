@@ -60,13 +60,9 @@
 
 (struct CipherState (k n) #:mutable #:prefab)
 
-(define (make-CipherState [k #f])
-  (CipherState k 0))
-
 (define (InitializeKey cs k)
   (set-CipherState-k! cs k)
-  (set-CipherState-n! cs 0)
-  cs)
+  (set-CipherState-n! cs 0))
 
 (define (next-n! cs)
   (define n (CipherState-n cs))
@@ -74,16 +70,13 @@
   (set-CipherState-n! cs (+ n 1))
   n)
 
-(define (HasKey cs)
-  (not (eq? #f (CipherState-k cs))))
-
 (define (EncryptWithAd cs ad plaintext)
-  (if (HasKey cs)
+  (if (CipherState-k cs)
       (ENCRYPT (CipherState-k cs) (next-n! cs) ad plaintext)
       plaintext))
 
 (define (DecryptWithAd cs ad ciphertext)
-  (if (HasKey cs)
+  (if (CipherState-k cs)
       (DECRYPT (CipherState-k cs) (next-n! cs) ad ciphertext)
       ciphertext))
 
@@ -95,10 +88,8 @@
 (struct SymmetricState (cs ck h) #:mutable #:prefab)
 
 (define (make-SymmetricState protocol_name)
-  (define h (if (<= (bytes-length protocol_name) HASHLEN)
-                (bytes-append protocol_name (make-bytes (- HASHLEN (bytes-length protocol_name))))
-                (HASH protocol_name)))
-  (SymmetricState (make-CipherState) h h))
+  (define h (bytes-pad-or-reduce protocol_name HASHLEN HASH))
+  (SymmetricState (CipherState #f 0) h h))
 
 (define (MixKey ss input_key_material)
   (match-define (list new-ck temp_k) (HKDF (SymmetricState-ck ss) input_key_material 2))
@@ -126,8 +117,8 @@
 
 (define (Split ss)
   (match-define (list temp_k1 temp_k2) (HKDF (SymmetricState-ck ss) #"" 2))
-  (list (make-CipherState (subbytes temp_k1 0 32))
-        (make-CipherState (subbytes temp_k2 0 32))))
+  (list (CipherState (subbytes temp_k1 0 32) 0)
+        (CipherState (subbytes temp_k2 0 32) 0)))
 
 ;;---------------------------------------------------------------------------
 
@@ -212,7 +203,7 @@
           (MixHash (HandshakeState-ss hs) (HandshakeState-re hs))
           (when (HandshakeState-psks hs)
             (MixKey (HandshakeState-ss hs) (HandshakeState-re hs)))]
-      ['s (let ((temp (if (HasKey (SymmetricState-cs (HandshakeState-ss hs)))
+      ['s (let ((temp (if (CipherState-k (SymmetricState-cs (HandshakeState-ss hs)))
                           (read-bytes (+ DHLEN 16) in)
                           (read-bytes DHLEN in))))
             (set-HandshakeState-rs! hs (DecryptAndHash (HandshakeState-ss hs) temp)))]

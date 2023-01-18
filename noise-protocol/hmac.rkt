@@ -10,11 +10,9 @@
   (let ((ipad (make-bytes BLOCKLEN #x36))
         (opad (make-bytes BLOCKLEN #x5c)))
     (lambda (key data)
-      (let* ((key (if (> (bytes-length key) BLOCKLEN) (HASH key) key))
-             (key (bytes-append key (make-bytes (- BLOCKLEN (bytes-length key))))))
+      (let ((key (bytes-pad-or-reduce key BLOCKLEN HASH)))
         (HASH (bytes-append (bytes-xor key opad)
-                            (HASH (bytes-append (bytes-xor key ipad)
-                                                data))))))))
+                            (HASH (bytes-append (bytes-xor key ipad) data))))))))
 
 (module+ test
   (require rackunit)
