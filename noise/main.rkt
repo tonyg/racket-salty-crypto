@@ -298,13 +298,3 @@
                                   (cons (append (car ps) '(psk))
                                         (cdr ps)))))])])]
     [_ #f]))
-
-;; (define/provide NNpsk0 (handshake-pattern "NNpsk0" '() '() '((psk e) (e ee))))
-;; (define/provide NKpsk0 (handshake-pattern "NKpsk0" '() '(s) '((psk e es) (e ee))))
-;; (define/provide IKpsk0 (handshake-pattern "IKpsk0" '() '(s) '((psk e es s ss) (e ee se))))
-;; (define/provide XKpsk0 (handshake-pattern "XKpsk0" '() '(s) '((psk e es) (e ee) (s se))))
-;; (define/provide XXpsk0 (handshake-pattern "XXpsk0" '() '() '((psk e) (e ee s es) (s se))))
-;; (define/provide IXpsk0 (handshake-pattern "IXpsk0" '() '() '((psk e s) (e ee se s es))))
-
-;; (define/provide NKpsk2 (handshake-pattern "NKpsk2" '() '(s) '((e es) (e ee psk))))
-;; (define/provide IKpsk2 (handshake-pattern "IKpsk2" '() '(s) '((e es s ss) (e ee se psk))))
