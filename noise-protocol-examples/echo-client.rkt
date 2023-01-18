@@ -47,7 +47,7 @@
                    (values (car css) (cadr css))
                    (loop))))))
      (log-info "Handshake complete, enter lines to echo")
-     (log-info "Server's static public-key is ~v" (HandshakeState-rs H))
+     (log-info "Server's static public-key is ~v" (remote-static-key H))
      (let loop ()
        (match (read-line)
          [(? eof-object?) (void)]

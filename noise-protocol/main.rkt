@@ -9,10 +9,11 @@
 
          GENERATE_KEYPAIR
 
-         HandshakeState-rs ;; TODO: expose more thoughtfully. Also expose the final hash state
          make-HandshakeState
          WriteMessage
          ReadMessage
+         remote-static-key
+         handshake-hash
 
          (struct-out handshake-pattern)
          lookup-handshake-pattern
@@ -112,9 +113,6 @@
   (set-SymmetricState-ck! ss new-ck)
   (MixHash ss temp_h)
   (InitializeKey (SymmetricState-cs ss) (subbytes temp_k 0 32)))
-
-(define (GetHandshakeHash ss)
-  (SymmetricState-h ss))
 
 (define (EncryptAndHash ss plaintext)
   (define ciphertext (EncryptWithAd (SymmetricState-cs ss) (SymmetricState-h ss) plaintext))
@@ -230,6 +228,9 @@
       ['ss (MixKey (HandshakeState-ss hs) (DH (HandshakeState-s hs) (HandshakeState-rs hs)))]
       ['psk (MixKeyAndHash (HandshakeState-ss hs) (next-psk! hs))]))
   (values (DecryptAndHash (HandshakeState-ss hs) (port->bytes in)) (maybe-Split hs)))
+
+(define (remote-static-key hs) (HandshakeState-rs hs))
+(define (handshake-hash hs) (SymmetricState-h (HandshakeState-ss hs)))
 
 ;;---------------------------------------------------------------------------
 
