@@ -1,12 +1,16 @@
 # racket-salty-crypto
 
-Racket bindings to a selection of cryptographic libraries loosely based around
-[NaCl](http://nacl.cr.yp.to/) and what followed it.
+This repository includes
 
- - [`libsodium`](https://libsodium.org/), a mature and well-supported library originally built
-   around NaCl.
+ - packages that provide Racket bindings to a selection of cryptographic libraries loosely
+   based around [NaCl](http://nacl.cr.yp.to/) and what followed it:
 
- - [`libb2`](https://github.com/BLAKE2/libb2), support for BLAKE2b, BLAKE2s etc.
+    - [`libsodium`](https://libsodium.org/), a mature and well-supported library originally
+      built around NaCl.
+
+    - [`libb2`](https://github.com/BLAKE2/libb2), support for BLAKE2b, BLAKE2s etc.
+
+ - a package implementing the [Noise Protocol Framework](https://noiseprotocol.org/) for Racket
 
 ## Copyright and License
 
