@@ -16,6 +16,7 @@
 
          (struct-out handshake-pattern)
          lookup-handshake-pattern
+         handshake-pattern-one-way?
          )
 
 (require libsodium)
@@ -168,7 +169,7 @@
 
 ;;---------------------------------------------------------------------------
 
-(struct handshake-pattern (name initiator-pre-message responder-pre-message message-patterns) #:prefab)
+(struct handshake-pattern (name base-name initiator-pre-message responder-pre-message message-patterns) #:prefab)
 
 (struct HandshakeState (ss s e rs re role message-patterns psks) #:mutable)
 
@@ -277,21 +278,26 @@
      (define modifiers (string-split (or modifiers0 "") "+"))
      (define base
        (match main
-         ["NN" (handshake-pattern "--" '() '() '((e) (e ee)))]
-         ["NK" (handshake-pattern "--" '() '(s) '((e es) (e ee)))]
-         ["NX" (handshake-pattern "--" '() '() '((e) (e ee s es)))]
-         ["KN" (handshake-pattern "--" '(s) '() '((e) (e ee se)))]
-         ["KK" (handshake-pattern "--" '(s) '(s) '((e es ss) (e ee se)))]
-         ["KX" (handshake-pattern "--" '(s) '() '((e) (e ee se s es)))]
-         ["XN" (handshake-pattern "--" '() '() '((e) (e ee) (s se)))]
-         ["XK" (handshake-pattern "--" '() '(s) '((e es) (e ee) (s se)))]
-         ["XX" (handshake-pattern "--" '() '() '((e) (e ee s es) (s se)))]
-         ["IN" (handshake-pattern "--" '() '() '((e s) (e ee se)))]
-         ["IK" (handshake-pattern "--" '() '(s) '((e es s ss) (e ee se)))]
-         ["IX" (handshake-pattern "--" '() '() '((e s) (e ee se s es)))]
+         ["N" (handshake-pattern "-" "-" '() '(s) '((e es)))]
+         ["K" (handshake-pattern "-" "-" '(s) '(s) '((e es ss)))]
+         ["X" (handshake-pattern "-" "-" '() '(s) '((e es s ss)))]
+         ["NN" (handshake-pattern "--" "--" '() '() '((e) (e ee)))]
+         ["NK" (handshake-pattern "--" "--" '() '(s) '((e es) (e ee)))]
+         ["NX" (handshake-pattern "--" "--" '() '() '((e) (e ee s es)))]
+         ["KN" (handshake-pattern "--" "--" '(s) '() '((e) (e ee se)))]
+         ["KK" (handshake-pattern "--" "--" '(s) '(s) '((e es ss) (e ee se)))]
+         ["KX" (handshake-pattern "--" "--" '(s) '() '((e) (e ee se s es)))]
+         ["XN" (handshake-pattern "--" "--" '() '() '((e) (e ee) (s se)))]
+         ["XK" (handshake-pattern "--" "--" '() '(s) '((e es) (e ee) (s se)))]
+         ["XX" (handshake-pattern "--" "--" '() '() '((e) (e ee s es) (s se)))]
+         ["IN" (handshake-pattern "--" "--" '() '() '((e s) (e ee se)))]
+         ["IK" (handshake-pattern "--" "--" '() '(s) '((e es s ss) (e ee se)))]
+         ["IX" (handshake-pattern "--" "--" '() '() '((e s) (e ee se s es)))]
          [_ #f]))
      (define modified (for/fold [(p base)] [(mod modifiers)] (and p (apply-modifier p mod))))
-     (and modified (struct-copy handshake-pattern modified [name pattern-name-str]))]
+     (and modified (struct-copy handshake-pattern modified
+                     [name pattern-name-str]
+                     [base-name main]))]
     [_ #f]))
 
 (define (apply-modifier p mod)
@@ -308,3 +314,6 @@
                                   (cons (append (car ps) '(psk))
                                         (cdr ps)))))])])]
     [_ #f]))
+
+(define (handshake-pattern-one-way? p)
+  (= 1 (string-length (handshake-pattern-base-name p))))

@@ -39,6 +39,7 @@
           ;; (printf "Skipping ~a\n" protocol_name)
           (void))
         (let ()
+          (define oneway? (handshake-pattern-one-way? pattern))
           (define (! f a . args) (and a (apply f a args)))
           (define (get c k) (! hex-string->bytes (! hash-ref c k #f)))
           (define (many-psks c k) (match (hash-ref c k '()) ['() #f] [hs (map hex-string->bytes hs)]))
@@ -70,8 +71,7 @@
                                            #:preshared-keys resp-psks))
             (let loop ((messages (hash-ref test-case 'messages))
                        (sender I)
-                       (receiver R)
-                       (sender-is-initiator? #t))
+                       (receiver R))
               (match messages
                 ['() 'done]
                 [(cons m more-messages)
@@ -86,11 +86,11 @@
                  (check-equal? sender-css (! reverse receiver-css))
                  (cond
                    [(not sender-css)
-                    (loop more-messages receiver sender (not sender-is-initiator?))]
+                    (loop more-messages receiver sender)]
                    [else
                     (let loop ((messages more-messages)
-                               (sender-css receiver-css)
-                               (receiver-css sender-css))
+                               (sender-css (if oneway? sender-css receiver-css))
+                               (receiver-css (if oneway? receiver-css sender-css)))
                       (match messages
                         ['() 'done]
                         [(cons m more-messages)
@@ -101,7 +101,9 @@
                          (check-equal? actual-ciphertext expected-ciphertext)
                          (define remote-payload (DecryptWithAd (cadr receiver-css) #"" expected-ciphertext))
                          (check-equal? remote-payload payload)
-                         (loop more-messages receiver-css sender-css)]))])])))
+                         (if oneway?
+                             (loop more-messages sender-css receiver-css)
+                             (loop more-messages receiver-css sender-css))]))])])))
           (if (hash-ref test-case 'fail #f)
               (check-equal? (list protocol_name 'expected-failure)
                             (list protocol_name
