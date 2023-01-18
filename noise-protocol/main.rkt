@@ -32,19 +32,15 @@
 (define DHLEN crypto_scalarmult_BYTES)
 (define (DH kp pk) (crypto-scalarmult (crypto-box-keypair-sk kp) pk))
 
-(define (ENCRYPT k n ad plaintext) (crypto-aead-chacha20poly1305-ietf-encrypt plaintext ad n k))
-(define (DECRYPT k n ad ciphertext) (crypto-aead-chacha20poly1305-ietf-decrypt ciphertext ad n k))
+(define (ENCRYPT k n ad plaintext)
+  (crypto-aead-chacha20poly1305-ietf-encrypt plaintext ad (SERIALIZE-NONCE n) k))
+(define (DECRYPT k n ad ciphertext)
+  (crypto-aead-chacha20poly1305-ietf-decrypt ciphertext ad (SERIALIZE-NONCE n) k))
 (define (REKEY k)
-  (subbytes (ENCRYPT k
-                     (make-bytes crypto_aead_chacha20poly1305_ietf_NPUBBYTES 255)
-                     #""
-                     (make-bytes crypto_aead_chacha20poly1305_ietf_KEYBYTES))
-            0
-            crypto_aead_chacha20poly1305_ietf_KEYBYTES))
-(define (SERIALIZE-NONCE n)
-  (bytes-append (make-bytes 4) ;; ChaChaPoly-IETF has a 96-bit nonce
-                ;; v Little-endian for ChaChaPoly, but big-endian for AESGCM!
-                (integer->integer-bytes n 8 #f #f)))
+  (define n (make-bytes crypto_aead_chacha20poly1305_ietf_NPUBBYTES 255))
+  (define block (ENCRYPT k n #"" (make-bytes crypto_aead_chacha20poly1305_ietf_KEYBYTES)))
+  (subbytes block 0 crypto_aead_chacha20poly1305_ietf_KEYBYTES))
+(define (SERIALIZE-NONCE n) (bytes-append (make-bytes 4) (integer->integer-bytes n 8 #f #f)))
 
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
@@ -74,9 +70,8 @@
 (define (next-n! cs)
   (define n (CipherState-n cs))
   (set-CipherState-n! cs (+ n 1))
-  (when (= n #xffffffffffffffff)
-    (error 'next-nonce "No more nonces available"))
-  (SERIALIZE-NONCE n))
+  (when (= n #xffffffffffffffff) (error 'next-nonce "No more nonces available"))
+  n)
 
 (define (HasKey cs)
   (not (eq? #f (CipherState-k cs))))
