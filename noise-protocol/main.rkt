@@ -72,8 +72,9 @@
     (set! ck new-ck)
     (set! cs (CipherState k)))
 
-  (define (MixKeyAndHash input)
-    (match-define (list new-ck temp_h k) (HKDF ck input 3))
+  (define (MixKeyAndHash-next-psk)
+    (match-define (list new-ck temp_h k) (HKDF ck (car psks) 3))
+    (set! psks (cdr psks))
     (set! ck new-ck)
     (MixHash temp_h)
     (set! cs (CipherState k)))
@@ -83,9 +84,6 @@
 
   (define (next-message-pattern!)
     (begin0 (car message-patterns) (set! message-patterns (cdr message-patterns))))
-
-  (define (next-psk!)
-    (begin0 (car psks) (set! psks (cdr psks))))
 
   (define (maybe-Split)
     (and (null? message-patterns)
@@ -121,7 +119,7 @@
               ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
               ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
               ['ss (MixKey (DH s rs))]
-              ['psk (MixKeyAndHash (next-psk!))]))
+              ['psk (MixKeyAndHash-next-psk)]))
           (write-bytes (EncryptAndHash payload) port))))
      (values buffer (maybe-Split))]
 
@@ -137,7 +135,7 @@
          ['es (MixKey (match role ['initiator (DH e rs)] ['responder (DH s re)]))]
          ['se (MixKey (match role ['initiator (DH s re)] ['responder (DH e rs)]))]
          ['ss (MixKey (DH s rs))]
-         ['psk (MixKeyAndHash (next-psk!))]))
+         ['psk (MixKeyAndHash-next-psk)]))
      (values (DecryptAndHash (port->bytes in)) (maybe-Split))]
 
     [(list 'remote-static-key) rs]
