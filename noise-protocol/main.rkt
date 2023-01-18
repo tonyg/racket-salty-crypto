@@ -28,6 +28,7 @@
 (require (only-in racket/list take drop))
 (require "bytes.rkt")
 (require "hmac.rkt")
+(require "hkdf.rkt")
 
 (define (GENERATE_KEYPAIR) (make-crypto-box-keypair))
 (define DHLEN crypto_scalarmult_BYTES)
@@ -46,15 +47,7 @@
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
 (define BLOCKLEN BLAKE2S_BLOCKLEN)
-(define HMAC-HASH (make-hmac HASH BLOCKLEN))
-
-(define (HKDF chaining-key input-key-material num-outputs)
-  (define temp-key (HMAC-HASH chaining-key input-key-material))
-  (define output1 (HMAC-HASH temp-key (bytes 1)))
-  (define output2 (HMAC-HASH temp-key (bytes-append output1 (bytes 2))))
-  (match num-outputs
-    [2 (list output1 output2)]
-    [3 (list output1 output2 (HMAC-HASH temp-key (bytes-append output2 (bytes 3))))]))
+(define HKDF (make-hkdf (make-hmac HASH BLOCKLEN)))
 
 ;;---------------------------------------------------------------------------
 
