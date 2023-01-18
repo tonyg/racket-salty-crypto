@@ -7,6 +7,7 @@
 
 (provide (all-from-out "random.rkt"))
 (provide (all-from-out "hash.rkt"))
+(provide (all-from-out "scalarmult.rkt"))
 (provide (all-from-out "box.rkt"))
 (provide (all-from-out "stream.rkt"))
 (provide (all-from-out "onetimeauth.rkt"))
@@ -17,6 +18,7 @@
 
 (require "random.rkt")
 (require "hash.rkt")
+(require "scalarmult.rkt")
 (require "box.rkt")
 (require "stream.rkt")
 (require "onetimeauth.rkt")

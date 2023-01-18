@@ -6,6 +6,7 @@
 (require "ffi-lib.rkt")
 (require "random.rkt")
 (require "hash.rkt")
+(require "scalarmult.rkt")
 
 (provide crypto_box_SEEDBYTES
          crypto_box_PUBLICKEYBYTES
@@ -20,7 +21,7 @@
 	 make-crypto-box-keypair
          seed->crypto-box-keypair
          bytes->crypto-box-keypair
-         crypto-scalarmult-base
+         sk->crypto-box-keypair
 	 crypto-box-random-nonce
 	 crypto-box
 	 crypto-box-open
@@ -81,13 +82,9 @@
   (define seed (subbytes (crypto-hash bs) 0 crypto_box_SEEDBYTES))
   (seed->crypto-box-keypair seed))
 
-(define-libsodium crypto_scalarmult_base (_fun _bytes _bytes -> _int))
-
-(define (crypto-scalarmult-base sk)
-  (check-length 'crypto-scalarmult-base "sk" sk crypto_box_SECRETKEYBYTES)
-  (define pk (make-bytes crypto_box_PUBLICKEYBYTES))
-  (check-result (crypto_scalarmult_base pk sk))
-  pk)
+(define (sk->crypto-box-keypair sk)
+  (define pk (crypto-scalarmult-base sk))
+  (crypto-box-keypair pk sk))
 
 (define (crypto-box-random-nonce)
   (random-bytes crypto_box_NONCEBYTES))
