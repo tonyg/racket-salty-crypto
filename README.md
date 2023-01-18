@@ -10,7 +10,8 @@ This repository includes
 
     - [`libb2`](https://github.com/BLAKE2/libb2), support for BLAKE2b, BLAKE2s etc.
 
- - a package implementing the [Noise Protocol Framework](https://noiseprotocol.org/) for Racket
+ - a `noise` package implementing the [Noise Protocol Framework](https://noiseprotocol.org/)
+   for Racket
 
 ## Copyright and License
 
