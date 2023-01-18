@@ -25,8 +25,8 @@
 (require racket/port)
 (require (only-in racket/string string-split))
 (require (only-in racket/list take drop))
-
-(module+ test (require rackunit))
+(require "bytes.rkt")
+(require "hmac.rkt")
 
 (define (GENERATE_KEYPAIR) (make-crypto-box-keypair))
 (define DHLEN crypto_box_BEFORENMBYTES)
@@ -45,39 +45,6 @@
 (define (HASH data) (blake2s data))
 (define HASHLEN BLAKE2S_OUTBYTES)
 (define BLOCKLEN BLAKE2S_BLOCKLEN)
-
-(define (bytes-xor bs1 bs2)
-  (define r (make-bytes (max (bytes-length bs1) (bytes-length bs2))))
-  (for [(i (in-range (bytes-length r)))
-        (j1 (in-cycle (in-range (bytes-length bs1))))
-        (j2 (in-cycle (in-range (bytes-length bs2))))]
-    (bytes-set! r i (bitwise-xor (bytes-ref bs1 j1) (bytes-ref bs2 j2))))
-  r)
-
-(module+ test
-  (check-equal? (bytes-xor (make-bytes 3 #x5a) (make-bytes 3 #xa5))
-                (make-bytes 3 #xff))
-  (check-equal? (bytes-xor (make-bytes 3 #x5a) (make-bytes 1 #xa5))
-                (make-bytes 3 #xff))
-  (check-equal? (bytes-xor (make-bytes 1 #x5a) (make-bytes 3 #xa5))
-                (make-bytes 3 #xff)))
-
-(define (make-hmac HASH BLOCKLEN)
-  (let ((ipad (make-bytes BLOCKLEN #x36))
-        (opad (make-bytes BLOCKLEN #x5c)))
-    (lambda (key data)
-      (let* ((key (if (> (bytes-length key) BLOCKLEN) (HASH key) key))
-             (key (bytes-append key (make-bytes (- BLOCKLEN (bytes-length key))))))
-        (HASH (bytes-append (bytes-xor key opad)
-                            (HASH (bytes-append (bytes-xor key ipad)
-                                                data))))))))
-
-(module+ test
-  (require file/sha1)
-  (require file/md5)
-  (check-equal? ((make-hmac (lambda (i) (md5 i #f)) 64) (make-bytes 16 11) #"Hi There")
-                (hex-string->bytes "9294727a3638bb1c13f48ef8158bfc9d")))
-
 (define HMAC-HASH (make-hmac HASH BLOCKLEN))
 
 (define (HKDF chaining-key input-key-material num-outputs)
