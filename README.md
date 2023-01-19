@@ -5,13 +5,13 @@ This repository includes
  - packages that provide Racket bindings to a selection of cryptographic libraries loosely
    based around [NaCl](http://nacl.cr.yp.to/) and what followed it:
 
-    - [`libsodium`](https://libsodium.org/), a mature and well-supported library originally
-      built around NaCl.
+    - [`libsodium`](libsodium/), a mature and well-supported library originally built around
+      NaCl.
 
-    - [`libb2`](https://github.com/BLAKE2/libb2), support for BLAKE2b, BLAKE2s etc.
+    - [`libb2`](libb2/), support for BLAKE2b, BLAKE2s etc.
 
- - a `noise-protocol` package implementing the
-   [Noise Protocol Framework](https://noiseprotocol.org/) for Racket
+ - a [`noise-protocol`](noise-protocol/) package (plus [examples](noise-protocol-examples/))
+   implementing the [Noise Protocol Framework](https://noiseprotocol.org/) for Racket.
 
 ## Copyright and License
 
