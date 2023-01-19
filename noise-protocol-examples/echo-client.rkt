@@ -10,7 +10,6 @@
     [(vector (and pattern-name (app string->pattern-number (? number? pattern-number)))
              hostname
              (app string->number (? number? port)))
-     (define pattern (lookup-handshake-pattern pattern-name))
      (define echo-protocol (bytes 0 ;; no old-style PSK
                                   pattern-number
                                   0 ;; ChaChaPoly
@@ -18,7 +17,7 @@
                                   2 ;; BLAKE2s
                                   ))
      (define-values (in out) (tcp-connect hostname port))
-     (define H (Noise-*-25519_ChaChaPoly_BLAKE2s pattern
+     (define H (Noise-*-25519_ChaChaPoly_BLAKE2s pattern-name
                                                  #:role 'initiator
                                                  #:prologue echo-protocol))
      (write-bytes echo-protocol out)

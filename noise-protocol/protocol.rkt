@@ -46,6 +46,12 @@
            #:remote-pregenerated-ephemeral-pk [re #f]
            #:preshared-keys [psks #f])
 
+    (when (string? handshake_pattern)
+      (let ((n handshake_pattern))
+        (set! handshake_pattern (lookup-handshake-pattern n))
+        (unless handshake_pattern
+          (error 'instantiate-noise-protocol "Unknown handshake pattern: ~v" n))))
+
     (define protocol_name
       (string->bytes/utf-8
        (format "Noise_~a_~a_~a_~a"
