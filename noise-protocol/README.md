@@ -4,6 +4,12 @@ This package implements the [Noise Protocol Framework](https://noiseprotocol.org
 
 It tracks the protocol specification [revision 34](https://noiseprotocol.org/noise_rev34.html).
 
+## Installation
+
+```shell
+raco pkg install noise-protocol
+```
+
 ## Example
 
 First, some simple packet framing:
