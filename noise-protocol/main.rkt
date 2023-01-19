@@ -4,6 +4,7 @@
 
 (provide Noise-*-25519_ChaChaPoly_BLAKE2s
          instantiate-noise-protocol
+         complete-handshake
          (all-from-out "patterns.rkt"))
 
 (require "patterns.rkt")

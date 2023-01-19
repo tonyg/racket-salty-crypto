@@ -4,6 +4,7 @@
 
 (provide MAX-NONCE
          instantiate-noise-protocol
+         complete-handshake
          make-default-rekey)
 
 (require racket/match)
@@ -143,6 +144,7 @@
            ['psk (MixKeyAndHash-next-psk)]))
        (values (DecryptAndHash (port->bytes in)) (maybe-Split))]
 
+      [(list 'role) role]
       [(list 'remote-static-key) rs]
       [(list 'handshake-hash) h])))
 
@@ -152,3 +154,14 @@
 
 (define (make-default-rekey ENCRYPT)
   (lambda (k) (ENCRYPT k MAX-NONCE #"" (make-bytes 32))))
+
+(define (complete-handshake H write-packet read-packet [handle-message void])
+  (define (W)
+    (define-values (packet css) (H 'write-message #""))
+    (write-packet packet)
+    (if css (values (car css) (cadr css)) (R)))
+  (define (R)
+    (define-values (message css) (H 'read-message (read-packet)))
+    (handle-message message)
+    (if css (values (car css) (cadr css)) (W)))
+  (match (H 'role) ['initiator (W)] ['responder (R)]))
