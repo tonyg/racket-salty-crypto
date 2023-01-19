@@ -31,8 +31,8 @@
 (define-libb2 _blake2bp (_fun _bytes _bytes _bytes _size _size _size -> _int) #:c-id blake2bp)
 
 (define (blake* fname _f OUTBYTES KEYBYTES)
-  (lambda (in [key #""] #:length [outbytes (* OUTBYTES 8)])
-    (define out (make-bytes (/ outbytes 8)))
+  (lambda (in [key #""] #:length [outbits (* OUTBYTES 8)])
+    (define out (make-bytes (/ outbits 8)))
     (check-length-<= fname "key" key KEYBYTES)
     (check-result fname (_f out in key (bytes-length out) (bytes-length in) (bytes-length key)))
     out))
