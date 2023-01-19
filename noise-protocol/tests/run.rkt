@@ -55,20 +55,22 @@
             (define resp-remote-static-pk (get test-case 'resp_remote_static))
             (define init-psks (or (! list (get test-case 'init_psk)) (many-psks test-case 'init_psks)))
             (define resp-psks (or (! list (get test-case 'resp_psk)) (many-psks test-case 'resp_psks)))
-            (define I (make-noise-protocol pattern
-                                           #:role 'initiator
-                                           #:prologue (or init-prologue #"")
-                                           #:static-keypair init-static
-                                           #:remote-static-pk init-remote-static-pk
-                                           #:pregenerated-ephemeral-keypair init-ephemeral
-                                           #:preshared-keys init-psks))
-            (define R (make-noise-protocol pattern
-                                           #:role 'responder
-                                           #:prologue (or resp-prologue #"")
-                                           #:static-keypair resp-static
-                                           #:remote-static-pk resp-remote-static-pk
-                                           #:pregenerated-ephemeral-keypair resp-ephemeral
-                                           #:preshared-keys resp-psks))
+            (define I (Noise-*-25519_ChaChaPoly_BLAKE2s
+                       pattern
+                       #:role 'initiator
+                       #:prologue (or init-prologue #"")
+                       #:static-keypair init-static
+                       #:remote-static-pk init-remote-static-pk
+                       #:pregenerated-ephemeral-keypair init-ephemeral
+                       #:preshared-keys init-psks))
+            (define R (Noise-*-25519_ChaChaPoly_BLAKE2s
+                       pattern
+                       #:role 'responder
+                       #:prologue (or resp-prologue #"")
+                       #:static-keypair resp-static
+                       #:remote-static-pk resp-remote-static-pk
+                       #:pregenerated-ephemeral-keypair resp-ephemeral
+                       #:preshared-keys resp-psks))
             (let loop ((messages (hash-ref test-case 'messages))
                        (sender I)
                        (receiver R))

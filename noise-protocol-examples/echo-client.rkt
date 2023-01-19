@@ -18,7 +18,9 @@
                                   2 ;; BLAKE2s
                                   ))
      (define-values (in out) (tcp-connect hostname port))
-     (define H (make-noise-protocol pattern #:role 'initiator #:prologue echo-protocol))
+     (define H (Noise-*-25519_ChaChaPoly_BLAKE2s pattern
+                                                 #:role 'initiator
+                                                 #:prologue echo-protocol))
      (write-bytes echo-protocol out)
      (define (write-packet bs)
        (log-info "Sending ~v" bs)
