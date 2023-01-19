@@ -161,9 +161,11 @@
 (define (make-default-rekey ENCRYPT)
   (lambda (k) (ENCRYPT k MAX-NONCE #"" (make-bytes 32))))
 
-(define (complete-handshake H write-packet read-packet [handle-message void])
+(define (complete-handshake H write-packet read-packet
+                            #:handle-message [handle-message void]
+                            #:produce-message [produce-message (lambda () #"")])
   (define (W)
-    (define-values (packet css) (H 'write-message #""))
+    (define-values (packet css) (H 'write-message (produce-message)))
     (write-packet packet)
     (if css (values (car css) (cadr css)) (R)))
   (define (R)
