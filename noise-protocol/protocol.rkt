@@ -44,7 +44,9 @@
            #:remote-static-pk [rs #f]
            #:pregenerated-ephemeral-keypair [e #f]
            #:remote-pregenerated-ephemeral-pk [re #f]
-           #:preshared-keys [psks #f])
+           #:preshared-keys [psks '()])
+
+    (when (null? psks) (set! psks #f))
 
     (when (string? handshake_pattern)
       (let ((n handshake_pattern))
