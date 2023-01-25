@@ -1,0 +1,75 @@
+NN:
+  -> e
+  <- e, ee
+
+	
+
+   KN:
+     -> s
+     ...
+     -> e
+     <- e, ee, se
+
+NK:
+  <- s
+  ...
+  -> e, es
+  <- e, ee
+
+	
+
+   KK:
+     -> s
+     <- s
+     ...
+     -> e, es, ss
+     <- e, ee, se
+
+NX:
+  -> e
+  <- e, ee, s, es
+
+	
+
+    KX:
+      -> s
+      ...
+      -> e
+      <- e, ee, se, s, es
+
+XN:
+  -> e
+  <- e, ee
+  -> s, se
+
+	
+
+    IN:
+      -> e, s
+      <- e, ee, se
+
+XK:
+  <- s
+  ...
+  -> e, es
+  <- e, ee
+  -> s, se
+
+	
+
+    IK:
+      <- s
+      ...
+      -> e, es, s, ss
+      <- e, ee, se
+
+XX:
+  -> e
+  <- e, ee, s, es
+  -> s, se
+
+	
+
+    IX:
+      -> e, s
+      <- e, ee, se, s, es
